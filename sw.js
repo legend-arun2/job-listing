@@ -1,5 +1,5 @@
 // Lets the app open without internet. Bump VERSION when files change.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = 'workers-' + VERSION; // prefixed: other apps on this github.io origin share Cache Storage
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 

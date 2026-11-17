@@ -125,7 +125,6 @@
     display: block; width: 100%; max-width: 720px; margin: 8px auto 0; border: 0; border-radius: 12px;
     padding: 13px; font-size: 17px; font-weight: 650; background: var(--primary); color: #fff;
   }
-  .send-btn:disabled { background: #c9cfcc; color: #59615e; }
 
   /* Full-screen sheets (form + menu) */
   .sheet {
@@ -167,6 +166,7 @@
 
   .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
   .seg button { border: 0; background: none; padding: 12px; font-weight: 600; }
+  .seg button.on { background: var(--primary); color: #fff; }
   .seg button.on[data-v="available"] { background: var(--primary); color: #fff; }
   .seg button.on[data-v="placed"] { background: var(--placed); color: #fff; }
 
@@ -190,6 +190,19 @@
   .menu-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
   .menu-card h3 { margin: 0 0 6px; font-size: 18px; }
   .menu-card p { margin: 0 0 6px; color: var(--muted); font-size: 15px; }
+
+  /* Send job message */
+  #sendSheet h3 { margin: 24px 0 4px; font-size: 18px; }
+  #mText { min-height: 230px; }
+  .pkg .check-row { margin-top: 8px; padding: 10px 12px; }
+  .send-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #fff; border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
+  .send-row.sent { background: #f3faf7; }
+  .send-name { flex: 1 1 100%; min-width: 0; }
+  .send-name .name { font-size: 16px; }
+  .send-row a { flex: 1; text-align: center; text-decoration: none; font-weight: 650; border-radius: 10px; padding: 10px 12px; border: 1.5px solid var(--line); background: #fff; color: var(--text); }
+  .send-row a.wa { background: #e7f8ee; border-color: #9fd8b5; color: #11683a; }
+  .sent-mark { display: none; color: var(--primary); font-weight: 600; font-size: 13px; }
+  .send-row.sent .sent-mark { display: inline; }
 
   /* Narrow phones (e.g. Redmi 360px wide) */
   @media (max-width: 380px) {
@@ -242,7 +255,7 @@
     <strong id="tickCount"></strong>
     <button class="link-btn" id="untickBtn" data-t="untickAll">Untick all</button>
   </div>
-  <button class="send-btn" id="sendBtn" disabled data-t="sendSoon">Send job message (coming next)</button>
+  <button class="send-btn" id="sendBtn" data-t="sendJob">Send job message</button>
 </div>
 
 <!-- Add / edit worker -->
@@ -341,6 +354,51 @@
   </div>
 </section>
 
+<!-- Send job message -->
+<section class="sheet" id="sendSheet" hidden>
+  <div class="sheet-head">
+    <button class="head-btn" id="sendBack" data-t="close">Close</button>
+    <h2 data-t="sendJob">Send job message</h2>
+  </div>
+  <div class="sheet-body">
+    <div class="hint" id="sendTo"></div>
+
+    <div class="field">
+      <span data-t="msgLang">Message language</span>
+      <div class="seg" id="mLangSeg">
+        <button type="button" data-v="en">English</button>
+        <button type="button" data-v="ne">नेपाली</button>
+      </div>
+    </div>
+
+    <label class="field"><span data-t="jobField">Job</span>
+      <input id="mJob" autocomplete="off">
+    </label>
+    <label class="field"><span data-t="salary">Salary</span>
+      <input id="mSalary" autocomplete="off" data-tp="salaryPh" placeholder="e.g. AED 1,500 per month">
+    </label>
+    <div class="field"><span data-t="pkg">Package</span>
+      <div class="pkg" id="mPkg"></div>
+    </div>
+    <label class="field"><span data-t="pkgNotes">Package notes</span>
+      <textarea id="mPkgNotes"></textarea>
+    </label>
+    <label class="field"><span data-t="contract">Contract details</span>
+      <textarea id="mContract"></textarea>
+    </label>
+
+    <label class="field"><span data-t="message">Message</span>
+      <textarea id="mText"></textarea>
+      <div class="hint" data-t="msgHint"></div>
+    </label>
+    <button type="button" class="link-btn" id="mRewrite" data-t="rewrite" hidden>Rewrite from the form</button>
+
+    <h3 data-t="sendEach">Send to each worker</h3>
+    <div class="hint" data-t="sendEachHint"></div>
+    <div id="sendList"></div>
+  </div>
+</section>
+
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -354,7 +412,7 @@ const T = {
     addWorker: '+ Add worker', editWorker: 'Edit worker', newWorker: 'New worker',
     tickAllShown: 'Tick all shown', untickAll: 'Untick all',
     nTicked: n => `${n} ticked`, nWorkers: (shown, total) => shown === total ? `${total} worker${total === 1 ? '' : 's'}` : `${shown} of ${total} workers`,
-    sendSoon: 'Send job message (coming next)',
+    sendJob: 'Send job message',
     noWorkers: 'No workers yet.', noMatch: 'No workers match your search.', clearFilters: 'Clear search and filters',
     cancel: 'Cancel', close: 'Close', save: 'Save', deleteWorker: 'Delete this worker',
     confirmDelete: name => `Delete ${name}? This cannot be undone.`,
@@ -375,6 +433,14 @@ const T = {
     confirmRestore: n => `Add or update ${n} workers from this backup?`, restored: n => `Restored ${n} workers`,
     badFile: 'This is not a valid backup file.', backupSaved: 'Backup file ready',
     photoFail: 'Could not read that photo.',
+    sendTo: n => `Sending to ${n} worker${n === 1 ? '' : 's'}`, msgLang: 'Message language',
+    jobField: 'Job', salary: 'Salary', salaryPh: 'e.g. AED 1,500 per month',
+    pkg: 'Package', pkgNotes: 'Package notes', contract: 'Contract details', message: 'Message',
+    msgHint: "Edit it or type your own. {name} is replaced by each worker's first name.", rewrite: 'Rewrite from the form',
+    sendEach: 'Send to each worker', sendEachHint: 'Tap WhatsApp or SMS for each worker. The message opens ready to send.',
+    noPhone: 'No phone number', noCode: 'Add the country code, e.g. +971', sms: 'SMS', opened: 'Opened ✓',
+    msgHello: 'Hello {name},', msgIntro: 'We have a job for you.', msgOutro: 'Please reply if you are interested.',
+    pkgName: { food: 'Food', accommodation: 'Accommodation', flight: 'Flight ticket', visa: 'Visa', insurance: 'Medical insurance' },
     job: { maid: 'Maid', nail: 'Nail technician', driver: 'Driver', office: 'Office staff' },
     countryName: { AE: 'UAE (Dubai)', NP: 'Nepal' },
     visaName: { none: 'No visa', visit: 'Visit visa', employment: 'Employment visa', process: 'Visa in process', expired: 'Visa expired', notneeded: 'Not needed' },
@@ -387,7 +453,7 @@ const T = {
     addWorker: '+ कामदार थप्नुहोस्', editWorker: 'कामदार सम्पादन', newWorker: 'नयाँ कामदार',
     tickAllShown: 'देखिएका सबै छान्नुहोस्', untickAll: 'सबै हटाउनुहोस्',
     nTicked: n => `${n} जना छानिए`, nWorkers: (shown, total) => shown === total ? `${total} जना कामदार` : `${total} मध्ये ${shown} जना`,
-    sendSoon: 'कामको सन्देश पठाउनुहोस् (चाँडै आउँदैछ)',
+    sendJob: 'कामको सन्देश पठाउनुहोस्',
     noWorkers: 'अहिलेसम्म कुनै कामदार छैन।', noMatch: 'खोजसँग मिल्ने कामदार भेटिएन।', clearFilters: 'खोज र फिल्टर हटाउनुहोस्',
     cancel: 'रद्द गर्नुहोस्', close: 'बन्द गर्नुहोस्', save: 'सेभ गर्नुहोस्', deleteWorker: 'यो कामदार मेटाउनुहोस्',
     confirmDelete: name => `${name} लाई मेटाउने हो? यो फिर्ता गर्न सकिँदैन।`,
@@ -408,6 +474,14 @@ const T = {
     confirmRestore: n => `यो ब्याकअपबाट ${n} जना कामदार थप्ने वा अद्यावधिक गर्ने हो?`, restored: n => `${n} जना कामदार फिर्ता ल्याइयो`,
     badFile: 'यो सही ब्याकअप फाइल होइन।', backupSaved: 'ब्याकअप फाइल तयार भयो',
     photoFail: 'त्यो फोटो खोल्न सकिएन।',
+    sendTo: n => `${n} जना कामदारलाई पठाउने`, msgLang: 'सन्देशको भाषा',
+    jobField: 'काम', salary: 'तलब', salaryPh: 'जस्तै: महिनाको AED 1,500',
+    pkg: 'प्याकेज', pkgNotes: 'प्याकेजको टिप्पणी', contract: 'सम्झौताको विवरण', message: 'सन्देश',
+    msgHint: 'यो सम्पादन गर्न वा आफ्नै लेख्न सकिन्छ। {name} को ठाउँमा हरेक कामदारको पहिलो नाम आउँछ।', rewrite: 'फारमबाट फेरि लेख्नुहोस्',
+    sendEach: 'हरेक कामदारलाई पठाउनुहोस्', sendEachHint: 'हरेक कामदारको WhatsApp वा एसएमएस थिच्नुहोस्। सन्देश पठाउन तयार भएर खुल्छ।',
+    noPhone: 'फोन नम्बर छैन', noCode: 'देशको कोड थप्नुहोस्, जस्तै +971', sms: 'एसएमएस', opened: 'खोलियो ✓',
+    msgHello: 'नमस्ते {name},', msgIntro: 'तपाईंका लागि हामीसँग एउटा काम छ।', msgOutro: 'इच्छुक हुनुहुन्छ भने कृपया जवाफ दिनुहोस्।',
+    pkgName: { food: 'खाना', accommodation: 'बस्ने व्यवस्था', flight: 'हवाई टिकट', visa: 'भिसा', insurance: 'स्वास्थ्य बीमा' },
     job: { maid: 'घरेलु कामदार', nail: 'नेल टेक्निसियन', driver: 'ड्राइभर', office: 'अफिस कर्मचारी' },
     countryName: { AE: 'युएई (दुबई)', NP: 'नेपाल' },
     visaName: { none: 'भिसा छैन', visit: 'भिजिट भिसा', employment: 'रोजगार भिसा', process: 'भिसा प्रक्रियामा', expired: 'भिसा सकिएको', notneeded: 'आवश्यक छैन' },
@@ -632,11 +706,11 @@ function openSheet(id) {
   history.pushState({ sheet: id }, '');
 }
 function closeSheet() {
-  const open = !$('formSheet').hidden || !$('menuSheet').hidden;
+  const open = document.querySelector('.sheet:not([hidden])');
   hideSheets(); // hide now, so a second tap can't step back again
   if (open && history.state && history.state.sheet) history.back();
 }
-function hideSheets() { $('formSheet').hidden = true; $('menuSheet').hidden = true; }
+function hideSheets() { document.querySelectorAll('.sheet').forEach(el => { el.hidden = true; }); }
 window.addEventListener('popstate', hideSheets);
 
 /* ---------- Add / edit form ---------- */
@@ -678,12 +752,13 @@ function renderPhoto() {
 function renderStatusSeg() {
   $('fStatusSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === formStatus));
 }
+const dialNumber = p => p.trim().replace(/[^\d+]/g, '');
+const waDigits = p => p.replace(/\D/g, '').replace(/^00/, ''); // wa.me wants digits only, no + or 00
 function renderQuickLinks() {
-  const raw = $('fPhone').value.trim();
-  const digits = raw.replace(/\D/g, '');
-  $('quick').hidden = digits.length < 6;
-  $('callLink').href = 'tel:' + raw.replace(/[^\d+]/g, '');
-  $('waLink').href = 'https://wa.me/' + digits;
+  const raw = $('fPhone').value;
+  $('quick').hidden = waDigits(raw).length < 6;
+  $('callLink').href = 'tel:' + dialNumber(raw);
+  $('waLink').href = 'https://wa.me/' + waDigits(raw);
 }
 function refreshFormText() {
   applyStaticText();
@@ -858,6 +933,89 @@ $('importInput').onchange = async e => {
   closeSheet();
   toast(t('restored', list.length));
 };
+
+/* ---------- Send job message ---------- */
+const PKG_KEYS = ['food', 'accommodation', 'flight', 'visa', 'insurance'];
+let sendTo = [];        // the ticked workers
+let msgLang = store.get('workers.msgLang') === 'ne' ? 'ne' : 'en';
+let msgEdited = false;  // he typed in the message box, so stop rewriting it
+let jobTouched = false; // he typed in the Job box, so stop filling it in
+const tm = k => T[msgLang][k]; // text in the message language
+const firstName = n => n.trim().split(/\s+/)[0];
+
+function commonJob() { // the job all ticked workers have, if they share one
+  const jobs = new Set(sendTo.map(w => w.jobType));
+  const j = jobs.size === 1 ? [...jobs][0] : '';
+  return own(T[msgLang].job, j) || j;
+}
+
+function buildMessage() {
+  const val = id => $(id).value.trim();
+  const items = [...$('mPkg').querySelectorAll('input:checked')].map(i => tm('pkgName')[i.value]);
+  const lines = [tm('msgHello'), '', tm('msgIntro'), ''];
+  const add = (label, text) => { if (text) lines.push(`${label}: ${text}`); };
+  add(tm('jobField'), val('mJob'));
+  add(tm('salary'), val('mSalary'));
+  add(tm('pkg'), [...items, val('mPkgNotes')].filter(Boolean).join(', '));
+  add(tm('contract'), val('mContract'));
+  lines.push('', tm('msgOutro'));
+  return lines.join('\n');
+}
+
+function updateLinks() { // each worker's links carry the current message with their own name
+  const text = $('mText').value;
+  $('sendList').querySelectorAll('.send-row').forEach(row => {
+    const w = sendTo.find(x => x.id === row.dataset.id);
+    const q = encodeURIComponent(text.replaceAll('{name}', firstName(w.name)));
+    const wa = row.querySelector('.wa');
+    if (wa) { wa.href = `https://wa.me/${waDigits(w.phone)}?text=${q}`; row.querySelector('.sms').href = `sms:${dialNumber(w.phone)}?body=${q}`; }
+  });
+}
+
+function syncMessage() {
+  if (!msgEdited) $('mText').value = buildMessage();
+  $('mRewrite').hidden = !msgEdited;
+  updateLinks();
+}
+
+function renderLangSeg() {
+  $('mLangSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === msgLang));
+}
+
+$('sendBtn').onclick = () => {
+  sendTo = workers.filter(w => ticked.has(w.id));
+  if (!sendTo.length) return;
+  msgEdited = jobTouched = false;
+  ['mSalary', 'mPkgNotes', 'mContract'].forEach(id => { $(id).value = ''; });
+  $('mJob').value = commonJob();
+  $('mPkg').innerHTML = PKG_KEYS.map(k =>
+    `<label class="check-row"><input type="checkbox" value="${k}"><span>${esc(T[lang].pkgName[k])}</span></label>`).join('');
+  $('sendTo').textContent = t('sendTo', sendTo.length);
+  $('sendList').innerHTML = sendTo.map(w => {
+    const ok = waDigits(w.phone || '').length >= 6;
+    const note = !ok ? t('noPhone') : /^\s*(\+|00)/.test(w.phone) ? w.phone : `${w.phone} · ${t('noCode')}`;
+    return `<div class="send-row" data-id="${esc(w.id)}">
+      <div class="send-name"><div class="name">${esc(w.name)}</div><div class="hint">${esc(note)} <span class="sent-mark">${esc(t('opened'))}</span></div></div>
+      ${ok ? `<a class="wa" target="_blank" rel="noopener">WhatsApp</a><a class="sms">${esc(t('sms'))}</a>` : ''}
+    </div>`;
+  }).join('');
+  renderLangSeg(); syncMessage();
+  openSheet('sendSheet');
+};
+$('sendBack').onclick = closeSheet;
+$('mJob').addEventListener('input', () => { jobTouched = true; });
+['mJob', 'mSalary', 'mPkg', 'mPkgNotes', 'mContract'].forEach(id => $(id).addEventListener('input', syncMessage));
+$('mText').addEventListener('input', () => { msgEdited = true; syncMessage(); });
+$('mRewrite').onclick = () => { msgEdited = false; syncMessage(); };
+$('mLangSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  msgLang = b.dataset.v; store.set('workers.msgLang', msgLang);
+  if (!jobTouched) $('mJob').value = commonJob();
+  renderLangSeg(); syncMessage();
+});
+$('sendList').addEventListener('click', e => { // the link opens WhatsApp / SMS; remember we did
+  const a = e.target.closest('a'); if (a) a.closest('.send-row').classList.add('sent');
+});
 
 /* ---------- Start ---------- */
 load();
