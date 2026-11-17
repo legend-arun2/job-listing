@@ -32,21 +32,22 @@ Deployment target is GitHub Pages (static files as-is), possibly Vercel later.
 Everything lives in `index.html`: CSS in `<style>`, then plain-JS sections marked `/* ---------- … ---------- */`. There is no framework.
 
 - **i18n:** the `T.en` and `T.ne` objects hold every string (some are functions taking counts or names).
-  - Static elements use `data-t` (textContent) or `data-tp` (placeholder). `applyStaticText()` fills them.
+  - Static elements use `data-t` (textContent), `data-tp` (placeholder) or `data-ta` (aria-label). `applyStaticText()` fills them.
   - `t(key, ...args)` looks up a string. Every new string needs both `en` and `ne` entries.
 - **Data:** IndexedDB database `staffing-app`, object store `workers`, `keyPath: 'id'`, accessed through the small `db` wrapper.
   - Worker fields: `id, name, phone, email, jobType, country, visa, status ('available'|'placed'), consentShareContact, notes, photo (JPEG data URL, shrunk to max 480px), createdAt, updatedAt`.
   - Stored values are language-neutral keys: `JOB_KEYS` (maid/nail/driver/office), `COUNTRY_KEYS` (AE/NP), `VISA_KEYS`. Labels come from `T[lang].job/countryName/visaName`.
   - `jobType` and `country` may also hold free text, typed via the "Other…" option (`OTHER` sentinel). Filters add these custom values automatically.
   - The `country` field is displayed as **Nationality**.
-- **Rendering:** state is the `workers` array, the `ticked` Set and the `filters` object. `render()` rebuilds the header filters, list, summary, tick bar and backup notice from that state. Call `load()` (re-read IndexedDB, then render) after any write.
+- **Rendering:** state is the `workers` array, the `ticked` Set and the `filters` object. `buildList()` creates every card once, only when `workers` (a new array after each `load()`) or the language changes. `render()` then just hides cards and updates ticks, so search and ticking stay fast with hundreds of photos. Call `load()` (re-read IndexedDB, then render) after any write. Untrusted values in HTML templates always go through `esc()`.
 - **Screens:** the add/edit form and Backup are full-screen `.sheet` sections. `openSheet()` pushes a history entry so the Android Back button closes them (via `popstate`). Close them with `closeSheet()`, not by hiding them directly.
 - **Persistence and backup:** data lives only on the phone.
   - Backup is a JSON file `{ app: 'staffing-workers', version: 1, exportedAt, workers }`, shared via the Web Share API or downloaded.
-  - Restore merges by `id` (put) and never deletes.
-  - `localStorage` holds only `lang` and `lastBackup`, which drives the 14-day reminder.
+  - Restore merges by `id`. It never deletes, and only replaces a worker when the file's `updatedAt` is newer. Photos that aren't `data:image/` URLs are dropped.
+  - Android Chrome can't share `.json` files, so export offers the same content as a `.txt` file there; import accepts both.
+  - `localStorage` holds only `workers.lang` and `workers.lastBackup`, which drives the 14-day reminder. Keys are prefixed because every Pages site on `legend-arun2.github.io` shares one origin.
   - `navigator.storage.persist()` is requested on the first save.
-- **Offline:** `sw.js` is network-first with a cache fallback. Bump `VERSION` in `sw.js` whenever app files change so installed phones pick up the update. Add any new static file to `FILES`.
-- **Layout:** mobile-first, with a `@media (max-width: 380px)` block that tightens the filters, header, cards and floating Add button for 360px phones. `body.has-ticks` adds bottom padding so the fixed tick bar and Add button never cover the last card.
+- **Offline:** `sw.js` is network-first, falling back to the cache when the network fails or takes over 3 s. Only `ok` same-origin responses are cached, in caches named `workers-<VERSION>`; activate deletes only old `workers-` caches. Bump `VERSION` in `sw.js` whenever app files change so installed phones pick up the update. Add any new static file to `FILES`.
+- **Layout:** mobile-first, with a `@media (max-width: 380px)` block that tightens the filters, header, cards and floating Add button for 360px phones. `render()` stores the tick bar's real height in `--bar`, which `body.has-ticks` uses so the bar never covers the Add button or the last card, at any font size.
 
 `.env.example` is a placeholder for later Vercel/online-storage settings; nothing reads it yet, and `.env` is git-ignored.

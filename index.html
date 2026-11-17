@@ -111,8 +111,8 @@
     background: var(--primary); color: #fff; border: 0; border-radius: 999px;
     padding: 16px 22px; font-size: 17px; font-weight: 650; box-shadow: 0 4px 14px rgba(0,0,0,.25);
   }
-  body.has-ticks { padding-bottom: calc(210px + env(safe-area-inset-bottom)); }
-  body.has-ticks .fab { bottom: calc(128px + env(safe-area-inset-bottom)); }
+  body.has-ticks { padding-bottom: calc(var(--bar, 116px) + 94px); }
+  body.has-ticks .fab { bottom: calc(var(--bar, 116px) + 12px); }
   .tickbar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 7;
     background: #fff; border-top: 1px solid var(--line);
@@ -211,14 +211,14 @@
 <header>
   <div class="head-row">
     <h1 data-t="appTitle">Workers</h1>
-    <button class="head-btn" id="langBtn" aria-label="Change language">नेपाली</button>
+    <button class="head-btn" id="langBtn" data-ta="changeLang">नेपाली</button>
     <button class="head-btn" id="menuBtn" data-t="backup">Backup</button>
   </div>
   <input class="search" id="search" type="search" autocomplete="off" data-tp="searchPh" placeholder="Search by name">
   <div class="filters">
-    <select id="fJob" aria-label="Job type"></select>
-    <select id="fCountry" aria-label="Nationality"></select>
-    <select id="fStatus" aria-label="Status"></select>
+    <select id="fJob" data-ta="jobType"></select>
+    <select id="fCountry" data-ta="country"></select>
+    <select id="fStatus" data-ta="status"></select>
   </div>
 </header>
 
@@ -334,9 +334,9 @@
     </div>
     <div class="menu-card">
       <h3 data-t="restore">Restore from backup</h3>
-      <p data-t="restoreExplain">Choose a backup file. Workers in the file are added, or updated if already here. Nothing is deleted.</p>
+      <p data-t="restoreExplain">Choose a backup file. Workers in the file are added, or updated if the file has a newer copy. Nothing is deleted.</p>
       <button class="ghost-btn" id="importBtn" data-t="chooseFile">Choose backup file</button>
-      <input type="file" id="importInput" accept=".json,application/json" hidden>
+      <input type="file" id="importInput" accept=".json,.txt,application/json,text/plain" hidden>
     </div>
   </div>
 </section>
@@ -347,7 +347,8 @@
 /* ---------- Text in both languages ---------- */
 const T = {
   en: {
-    appTitle: 'Workers', backup: 'Backup', searchPh: 'Search by name',
+    appTitle: 'Workers', backup: 'Backup', searchPh: 'Search by name', changeLang: 'Change language',
+    saveFail: 'Could not save. Is the phone storage full?', loadFail: 'Could not open the saved workers. Close and reopen the app.',
     allJobs: 'All jobs', allCountries: 'Nationality', allStatus: 'All status',
     available: 'Available', placed: 'Placed',
     addWorker: '+ Add worker', editWorker: 'Edit worker', newWorker: 'New worker',
@@ -370,7 +371,7 @@ const T = {
     lastBackup: d => `Last backup: ${d}`, neverBackedUp: 'No backup saved yet.',
     backupNudge: n => n == null ? 'You have not saved a backup yet.' : `Last backup was ${n} days ago.`,
     restore: 'Restore from backup', chooseFile: 'Choose backup file',
-    restoreExplain: 'Choose a backup file. Workers in the file are added, or updated if already here. Nothing is deleted.',
+    restoreExplain: 'Choose a backup file. Workers in the file are added, or updated if the file has a newer copy. Nothing is deleted.',
     confirmRestore: n => `Add or update ${n} workers from this backup?`, restored: n => `Restored ${n} workers`,
     badFile: 'This is not a valid backup file.', backupSaved: 'Backup file ready',
     photoFail: 'Could not read that photo.',
@@ -379,7 +380,8 @@ const T = {
     visaName: { none: 'No visa', visit: 'Visit visa', employment: 'Employment visa', process: 'Visa in process', expired: 'Visa expired', notneeded: 'Not needed' },
   },
   ne: {
-    appTitle: 'कामदारहरू', backup: 'ब्याकअप', searchPh: 'नामबाट खोज्नुहोस्',
+    appTitle: 'कामदारहरू', backup: 'ब्याकअप', searchPh: 'नामबाट खोज्नुहोस्', changeLang: 'भाषा बदल्नुहोस्',
+    saveFail: 'सेभ गर्न सकिएन। फोनको स्टोरेज भरिएको छ कि?', loadFail: 'सेभ गरिएका कामदार खोल्न सकिएन। एप बन्द गरेर फेरि खोल्नुहोस्।',
     allJobs: 'सबै काम', allCountries: 'राष्ट्रियता', allStatus: 'सबै स्थिति',
     available: 'उपलब्ध', placed: 'काममा लगाइएको',
     addWorker: '+ कामदार थप्नुहोस्', editWorker: 'कामदार सम्पादन', newWorker: 'नयाँ कामदार',
@@ -402,7 +404,7 @@ const T = {
     lastBackup: d => `अन्तिम ब्याकअप: ${d}`, neverBackedUp: 'अहिलेसम्म ब्याकअप सेभ गरिएको छैन।',
     backupNudge: n => n == null ? 'तपाईंले अहिलेसम्म ब्याकअप सेभ गर्नुभएको छैन।' : `अन्तिम ब्याकअप ${n} दिन अघि भएको थियो।`,
     restore: 'ब्याकअपबाट फिर्ता ल्याउनुहोस्', chooseFile: 'ब्याकअप फाइल छान्नुहोस्',
-    restoreExplain: 'ब्याकअप फाइल छान्नुहोस्। फाइलका कामदारहरू थपिन्छन्, पहिले नै भए अद्यावधिक हुन्छन्। केही पनि मेटिँदैन।',
+    restoreExplain: 'ब्याकअप फाइल छान्नुहोस्। फाइलका कामदारहरू थपिन्छन्, फाइलमा नयाँ विवरण भए अद्यावधिक हुन्छन्। केही पनि मेटिँदैन।',
     confirmRestore: n => `यो ब्याकअपबाट ${n} जना कामदार थप्ने वा अद्यावधिक गर्ने हो?`, restored: n => `${n} जना कामदार फिर्ता ल्याइयो`,
     badFile: 'यो सही ब्याकअप फाइल होइन।', backupSaved: 'ब्याकअप फाइल तयार भयो',
     photoFail: 'त्यो फोटो खोल्न सकिएन।',
@@ -423,11 +425,12 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
-let lang = store.get('lang') === 'ne' ? 'ne' : 'en';
+let lang = store.get('workers.lang') === 'ne' ? 'ne' : 'en';
 const t = (k, ...a) => { const v = T[lang][k] ?? T.en[k]; return typeof v === 'function' ? v(...a) : v; };
-const jobLabel = v => T[lang].job[v] || v || t('notSet');
-const countryLabel = v => T[lang].countryName[v] || v || t('notSet');
-const visaLabel = v => T[lang].visaName[v] || '';
+const own = (o, k) => (Object.hasOwn(o, k) ? o[k] : undefined);
+const jobLabel = v => own(T[lang].job, v) || v || t('notSet');
+const countryLabel = v => own(T[lang].countryName, v) || v || t('notSet');
+const visaLabel = v => own(T[lang].visaName, v) || '';
 const initials = name => name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
@@ -446,9 +449,13 @@ const db = {
     return this._p ||= new Promise((res, rej) => {
       const r = indexedDB.open('staffing-app', 1);
       r.onupgradeneeded = () => r.result.createObjectStore('workers', { keyPath: 'id' });
-      r.onsuccess = () => res(r.result);
+      r.onsuccess = () => {
+        const d = r.result;
+        d.onclose = d.onversionchange = () => { d.close(); this._p = null; }; // reconnect next time
+        res(d);
+      };
       r.onerror = () => rej(r.error);
-    });
+    }).catch(e => { this._p = null; throw e; });
   },
   async run(mode, fn) {
     const d = await this.open();
@@ -456,7 +463,8 @@ const db = {
       const tx = d.transaction('workers', mode);
       const req = fn(tx.objectStore('workers'));
       tx.oncomplete = () => res(req && req.result);
-      tx.onerror = () => rej(tx.error);
+      tx.onerror = e => rej(e.target.error);
+      tx.onabort = () => rej(tx.error || new Error('aborted')); // e.g. storage full
     });
   },
   all() { return this.run('readonly', s => s.getAll()); },
@@ -471,7 +479,7 @@ const ticked = new Set();
 const filters = { q: '', job: '', country: '', status: '' };
 
 async function load() {
-  workers = await db.all();
+  try { workers = await db.all(); } catch { toast(t('loadFail')); }
   render();
 }
 
@@ -490,6 +498,7 @@ function applyStaticText() {
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t(el.dataset.t); });
   document.querySelectorAll('[data-tp]').forEach(el => { el.placeholder = t(el.dataset.tp); });
+  document.querySelectorAll('[data-ta]').forEach(el => { el.setAttribute('aria-label', t(el.dataset.ta)); });
   $('langBtn').textContent = lang === 'en' ? 'नेपाली' : 'English';
   document.title = t('appTitle');
 }
@@ -515,29 +524,21 @@ function render() {
   renderFilters();
 
   // Forget ticks for workers that no longer exist
-  for (const id of ticked) if (!workers.some(w => w.id === id)) ticked.delete(id);
+  const ids = new Set(workers.map(w => w.id));
+  for (const id of ticked) if (!ids.has(id)) ticked.delete(id);
 
+  // Build the cards only when the workers or the language change;
+  // search, filters and ticks just show/hide or update existing cards.
+  if (builtFor.workers !== workers || builtFor.lang !== lang) buildList();
   const shown = visibleWorkers();
-  $('list').innerHTML = shown.map(w => {
-    const on = ticked.has(w.id);
-    const photo = w.photo
-      ? `<img class="avatar" src="${w.photo}" alt="">`
-      : `<span class="avatar">${esc(initials(w.name))}</span>`;
-    const metaParts = [jobLabel(w.jobType), countryLabel(w.country)];
-    const visa = visaLabel(w.visa);
-    if (visa) metaParts.push(visa);
-    return `<div class="card${on ? ' ticked' : ''}" data-id="${esc(w.id)}">
-      <button class="tick" data-act="tick" role="checkbox" aria-checked="${on}" aria-label="${esc(w.name)}"><span>${on ? '✓' : ''}</span></button>
-      <button class="card-main" data-act="open">
-        ${photo}
-        <span class="info">
-          <div class="name">${esc(w.name)}</div>
-          <div class="meta">${esc(metaParts.join(' · '))}</div>
-          <span class="badge${w.status === 'placed' ? ' placed' : ''}">${esc(t(w.status === 'placed' ? 'placed' : 'available'))}</span>
-        </span>
-      </button>
-    </div>`;
-  }).join('');
+  const shownIds = new Set(shown.map(w => w.id));
+  for (const card of $('list').children) {
+    const id = card.dataset.id, on = ticked.has(id);
+    card.hidden = !shownIds.has(id);
+    card.classList.toggle('ticked', on);
+    card.firstElementChild.setAttribute('aria-checked', on);
+    card.firstElementChild.firstElementChild.textContent = on ? '✓' : '';
+  }
 
   const empty = $('empty');
   if (!workers.length) {
@@ -562,12 +563,38 @@ function render() {
   $('tickbar').hidden = n === 0;
   document.body.classList.toggle('has-ticks', n > 0);
   $('tickCount').textContent = t('nTicked', n);
+  // Keep the Add button and last card clear of the tick bar at any font size.
+  if (n) document.body.style.setProperty('--bar', $('tickbar').offsetHeight + 'px');
 
   renderBackupNotice();
 }
 
+const builtFor = { workers: null, lang: null };
+function buildList() {
+  builtFor.workers = workers; builtFor.lang = lang;
+  $('list').innerHTML = [...workers].sort((a, b) => a.name.localeCompare(b.name)).map(w => {
+    const photo = w.photo
+      ? `<img class="avatar" src="${esc(w.photo)}" alt="">`
+      : `<span class="avatar">${esc(initials(w.name))}</span>`;
+    const metaParts = [jobLabel(w.jobType), countryLabel(w.country)];
+    const visa = visaLabel(w.visa);
+    if (visa) metaParts.push(visa);
+    return `<div class="card" data-id="${esc(w.id)}">
+      <button class="tick" data-act="tick" role="checkbox" aria-label="${esc(w.name)}"><span></span></button>
+      <button class="card-main" data-act="open">
+        ${photo}
+        <span class="info">
+          <div class="name">${esc(w.name)}</div>
+          <div class="meta">${esc(metaParts.join(' · '))}</div>
+          <span class="badge${w.status === 'placed' ? ' placed' : ''}">${esc(t(w.status === 'placed' ? 'placed' : 'available'))}</span>
+        </span>
+      </button>
+    </div>`;
+  }).join('');
+}
+
 function daysSinceBackup() {
-  const last = Number(store.get('lastBackup'));
+  const last = Number(store.get('workers.lastBackup'));
   return last ? Math.floor((Date.now() - last) / 86400000) : null;
 }
 function renderBackupNotice() {
@@ -595,7 +622,7 @@ $('fCountry').addEventListener('change', e => { filters.country = e.target.value
 $('fStatus').addEventListener('change', e => { filters.status = e.target.value; render(); });
 $('tickAllBtn').onclick = () => { visibleWorkers().forEach(w => ticked.add(w.id)); render(); };
 $('untickBtn').onclick = () => { ticked.clear(); render(); };
-$('langBtn').onclick = () => { lang = lang === 'en' ? 'ne' : 'en'; store.set('lang', lang); render(); if (!$('formSheet').hidden) refreshFormText(); renderLastBackup(); };
+$('langBtn').onclick = () => { lang = lang === 'en' ? 'ne' : 'en'; store.set('workers.lang', lang); render(); if (!$('formSheet').hidden) refreshFormText(); renderLastBackup(); };
 $('addBtn').onclick = () => openForm(null);
 
 /* ---------- Sheets + phone back button ---------- */
@@ -605,8 +632,9 @@ function openSheet(id) {
   history.pushState({ sheet: id }, '');
 }
 function closeSheet() {
-  if (history.state && history.state.sheet) history.back();
-  else hideSheets();
+  const open = !$('formSheet').hidden || !$('menuSheet').hidden;
+  hideSheets(); // hide now, so a second tap can't step back again
+  if (open && history.state && history.state.sheet) history.back();
 }
 function hideSheets() { $('formSheet').hidden = true; $('menuSheet').hidden = true; }
 window.addEventListener('popstate', hideSheets);
@@ -615,6 +643,7 @@ window.addEventListener('popstate', hideSheets);
 let editing = null;   // worker being edited, or null for new
 let formPhoto = null; // data URL
 let formStatus = 'available';
+let photoJob = null;  // photo still being shrunk for the open form
 
 function setupChoice(sel, otherInput, keys, labelFn, value) {
   sel.innerHTML = `<option value="">${esc(t('notSet'))}</option>` +
@@ -641,7 +670,7 @@ function fillChoices(job, country, visa) {
 
 function renderPhoto() {
   const b = $('photoBtn');
-  b.innerHTML = formPhoto ? `<img class="photo-big" src="${formPhoto}" alt="">` : esc(t('tapAddPhoto'));
+  b.innerHTML = formPhoto ? `<img class="photo-big" src="${esc(formPhoto)}" alt="">` : esc(t('tapAddPhoto'));
   b.style.padding = formPhoto ? '0' : '';
   $('photoChange').textContent = t(formPhoto ? 'changePhoto' : 'addPhoto');
   $('photoRemove').hidden = !formPhoto;
@@ -666,6 +695,7 @@ function refreshFormText() {
 function openForm(w) {
   editing = w || null;
   formPhoto = w?.photo || null;
+  photoJob = null;
   formStatus = w?.status || 'available';
   $('fName').value = w?.name || '';
   $('fPhone').value = w?.phone || '';
@@ -692,8 +722,9 @@ $('photoInput').onchange = async e => {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file) return;
-  try { formPhoto = await shrinkPhoto(file); renderPhoto(); }
-  catch { toast(t('photoFail')); }
+  const job = photoJob = shrinkPhoto(file);
+  try { const photo = await job; if (job === photoJob) { formPhoto = photo; renderPhoto(); } }
+  catch { if (job === photoJob) toast(t('photoFail')); }
 };
 
 // Make photos small so hundreds of workers fit on the phone.
@@ -715,10 +746,17 @@ function shrinkPhoto(file, max = 480) {
   });
 }
 
+let saving = false;
 $('form').addEventListener('submit', async e => {
   e.preventDefault();
+  if (saving) return;
   const name = $('fName').value.trim();
   if (!name) { $('nameErr').hidden = false; $('fName').focus(); return; }
+  saving = true;
+  try { await save(name); } catch { toast(t('saveFail')); } finally { saving = false; }
+});
+async function save(name) {
+  if (photoJob) await photoJob.catch(() => {}); // a photo still shrinking is included
   const now = Date.now();
   const w = {
     ...(editing || {}),
@@ -741,11 +779,11 @@ $('form').addEventListener('submit', async e => {
   await load();
   closeSheet();
   toast(t('saved'));
-});
+}
 
 $('deleteBtn').onclick = async () => {
   if (!editing || !confirm(t('confirmDelete', editing.name))) return;
-  await db.del(editing.id);
+  try { await db.del(editing.id); } catch { toast(t('saveFail')); return; }
   ticked.delete(editing.id);
   await load();
   closeSheet();
@@ -762,7 +800,7 @@ function askPersistentStorage() {
 
 /* ---------- Backup ---------- */
 function renderLastBackup() {
-  const last = Number(store.get('lastBackup'));
+  const last = Number(store.get('workers.lastBackup'));
   $('lastBackup').textContent = last
     ? t('lastBackup', new Date(last).toLocaleDateString(lang === 'ne' ? 'ne-NP' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }))
     : t('neverBackedUp');
@@ -773,21 +811,26 @@ $('backupNoticeBtn').onclick = exportBackup;
 $('exportBtn').onclick = exportBackup;
 
 async function exportBackup() {
-  const data = { app: 'staffing-workers', version: 1, exportedAt: new Date().toISOString(), workers: await db.all() };
-  const name = `workers-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  const file = new File([JSON.stringify(data)], name, { type: 'application/json' });
+  let json;
+  try { json = JSON.stringify({ app: 'staffing-workers', version: 1, exportedAt: new Date().toISOString(), workers: await db.all() }); }
+  catch { toast(t('loadFail')); return; }
+  const name = `workers-backup-${new Date().toISOString().slice(0, 10)}`;
+  // Android Chrome can't share .json files, so offer the same content as .txt there.
+  const files = [new File([json], name + '.json', { type: 'application/json' }), new File([json], name + '.txt', { type: 'text/plain' })];
+  const file = files[0];
+  const shareFile = navigator.canShare && files.find(f => navigator.canShare({ files: [f] }));
   let done = false;
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: name }); done = true; }
+  if (shareFile) {
+    try { await navigator.share({ files: [shareFile], title: shareFile.name }); done = true; }
     catch (err) { if (err.name === 'AbortError') return; }
   }
   if (!done) {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(file); a.download = name;
+    a.href = URL.createObjectURL(file); a.download = file.name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
-  store.set('lastBackup', String(Date.now()));
+  store.set('workers.lastBackup', String(Date.now()));
   renderLastBackup(); renderBackupNotice();
   toast(t('backupSaved'));
 }
@@ -803,9 +846,14 @@ $('importInput').onchange = async e => {
     list = (data && data.app === 'staffing-workers' && Array.isArray(data.workers)) ? data.workers : null;
     list = list && list.filter(w => w && typeof w.id === 'string' && typeof w.name === 'string');
   } catch { list = null; }
-  if (!list || !list.length) { alert(t('badFile')); return; }
+  if (!list) { alert(t('badFile')); return; }
+  // Photos must be images made by this app; anything else is dropped.
+  list.forEach(w => { if (typeof w.photo !== 'string' || !w.photo.startsWith('data:image/')) w.photo = null; });
+  // Never replace a worker with an older copy from the file.
+  const current = new Map(workers.map(w => [w.id, w]));
+  list = list.filter(w => !current.has(w.id) || (Number(w.updatedAt) || 0) > (current.get(w.id).updatedAt || 0));
   if (!confirm(t('confirmRestore', list.length))) return;
-  await db.putMany(list);
+  try { await db.putMany(list); } catch { toast(t('saveFail')); return; }
   await load();
   closeSheet();
   toast(t('restored', list.length));
