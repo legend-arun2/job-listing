@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Workers</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#0f5c4d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root {
+    --primary: #0f5c4d;
+    --primary-soft: #e3efeb;
+    --bg: #f5f4f0;
+    --card: #ffffff;
+    --text: #1d2321;
+    --muted: #66706c;
+    --line: #dedcd5;
+    --placed: #8a5a00;
+    --placed-soft: #fbefd6;
+    --danger: #b3261e;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  /* Header */
+  header {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--primary); color: #fff;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 12px;
+  }
+  .head-row { display: flex; align-items: center; gap: 8px; }
+  .head-row h1 { font-size: 21px; margin: 0; flex: 1; }
+  .head-btn {
+    background: rgba(255,255,255,.14); border: 0; color: #fff;
+    border-radius: 999px; padding: 8px 14px; font-size: 15px; min-height: 40px;
+  }
+  .search {
+    margin-top: 10px; width: 100%; border: 0; border-radius: 12px;
+    padding: 12px 14px; font-size: 17px; background: #fff; color: var(--text);
+  }
+  .filters { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .filters select {
+    width: 100%; min-width: 0; border: 0; border-radius: 10px; padding: 10px 8px;
+    font-size: 15px; background: #fff; color: var(--text);
+  }
+  .filters select.on { outline: 3px solid #f2c94c; }
+
+  main { padding: 12px 16px; max-width: 720px; margin: 0 auto; }
+  .summary { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 15px; margin: 2px 2px 10px; gap: 8px; }
+  .link-btn { background: none; border: 0; color: var(--primary); font-weight: 600; padding: 6px 2px; font-size: 15px; }
+
+  .notice {
+    background: #fff8e1; border: 1px solid #f0d98a; border-radius: 12px;
+    padding: 10px 12px; font-size: 15px; margin-bottom: 12px; display: flex; gap: 10px; align-items: center;
+  }
+  .notice span { flex: 1; }
+
+  /* Worker cards */
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border-radius: 14px; padding: 10px 12px 10px 6px;
+    border: 2px solid transparent; box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  }
+  .card.ticked { border-color: var(--primary); background: #f3faf7; }
+  .tick {
+    flex: none; width: 48px; height: 48px; display: grid; place-items: center;
+    background: none; border: 0; padding: 0;
+  }
+  .tick span {
+    width: 28px; height: 28px; border-radius: 8px; border: 2.5px solid #9aa39f;
+    display: grid; place-items: center; color: #fff; font-size: 18px; font-weight: 700;
+  }
+  .card.ticked .tick span { background: var(--primary); border-color: var(--primary); }
+  .card-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 0; text-align: left; }
+  .avatar {
+    flex: none; width: 56px; height: 56px; border-radius: 50%; object-fit: cover;
+    background: var(--primary-soft); color: var(--primary); display: grid; place-items: center;
+    font-weight: 700; font-size: 20px;
+  }
+  .info { min-width: 0; flex: 1; }
+  .name { font-weight: 650; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta { color: var(--muted); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge {
+    display: inline-block; font-size: 13px; font-weight: 600; border-radius: 999px; padding: 2px 10px; margin-top: 3px;
+    background: var(--primary-soft); color: var(--primary);
+  }
+  .badge.placed { background: var(--placed-soft); color: var(--placed); }
+
+  .empty { text-align: center; color: var(--muted); padding: 48px 16px; }
+  .empty p { margin: 0 0 16px; }
+
+  /* Floating add + ticked bar */
+  .fab {
+    position: fixed; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 6;
+    background: var(--primary); color: #fff; border: 0; border-radius: 999px;
+    padding: 16px 22px; font-size: 17px; font-weight: 650; box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  }
+  body.has-ticks { padding-bottom: calc(210px + env(safe-area-inset-bottom)); }
+  body.has-ticks .fab { bottom: calc(128px + env(safe-area-inset-bottom)); }
+  .tickbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 7;
+    background: #fff; border-top: 1px solid var(--line);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 14px rgba(0,0,0,.08);
+  }
+  .tickbar-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; max-width: 720px; margin: 0 auto; }
+  .tickbar strong { font-size: 17px; }
+  .send-btn {
+    display: block; width: 100%; max-width: 720px; margin: 8px auto 0; border: 0; border-radius: 12px;
+    padding: 13px; font-size: 17px; font-weight: 650; background: var(--primary); color: #fff;
+  }
+  .send-btn:disabled { background: #c9cfcc; color: #59615e; }
+
+  /* Full-screen sheets (form + menu) */
+  .sheet {
+    position: fixed; inset: 0; z-index: 20; background: var(--bg); overflow-y: auto;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+  .sheet-head {
+    position: sticky; top: 0; z-index: 2; background: var(--primary); color: #fff;
+    display: flex; align-items: center; gap: 8px; padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+  }
+  .sheet-head h2 { flex: 1; font-size: 19px; margin: 0; }
+  .sheet-body { padding: 16px; max-width: 640px; margin: 0 auto; }
+
+  .photo-pick { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .photo-big {
+    width: 120px; height: 120px; border-radius: 50%; object-fit: cover; background: var(--primary-soft);
+    color: var(--primary); display: grid; place-items: center; font-size: 15px; text-align: center; padding: 8px;
+    border: 0;
+  }
+  .photo-actions { display: flex; gap: 14px; }
+
+  .quick { display: flex; gap: 8px; margin: 8px 0 4px; }
+  .quick a {
+    flex: 1; text-align: center; text-decoration: none; border-radius: 12px; padding: 12px; font-weight: 650;
+    background: #fff; border: 1.5px solid var(--line); color: var(--text);
+  }
+  .quick a.wa { background: #e7f8ee; border-color: #9fd8b5; color: #11683a; }
+
+  label.field { display: block; }
+  .field { margin-top: 14px; }
+  .field > span { display: block; font-size: 15px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .field input, .field select, .field textarea {
+    width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px; background: #fff; font-size: 17px;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--primary); }
+  .field textarea { min-height: 100px; resize: vertical; }
+  .other-input { margin-top: 8px; }
+
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
+  .seg button { border: 0; background: none; padding: 12px; font-weight: 600; }
+  .seg button.on[data-v="available"] { background: var(--primary); color: #fff; }
+  .seg button.on[data-v="placed"] { background: var(--placed); color: #fff; }
+
+  .check-row {
+    display: flex; align-items: flex-start; gap: 12px; margin-top: 16px; background: #fff;
+    border: 1.5px solid var(--line); border-radius: 12px; padding: 12px;
+  }
+  .check-row input { width: 24px; height: 24px; margin: 0; flex: none; accent-color: var(--primary); }
+
+  .primary-btn {
+    display: block; width: 100%; border: 0; border-radius: 12px; padding: 15px; margin-top: 22px;
+    background: var(--primary); color: #fff; font-size: 18px; font-weight: 650;
+  }
+  .ghost-btn {
+    display: block; width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; margin-top: 10px;
+    background: #fff; font-size: 17px; font-weight: 600;
+  }
+  .danger-btn { display: block; width: 100%; border: 0; background: none; color: var(--danger); font-weight: 600; padding: 16px; margin-top: 10px; }
+  .error { color: var(--danger); font-size: 14px; margin-top: 4px; }
+
+  .menu-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  .menu-card h3 { margin: 0 0 6px; font-size: 18px; }
+  .menu-card p { margin: 0 0 6px; color: var(--muted); font-size: 15px; }
+
+  .toast {
+    position: fixed; left: 50%; transform: translateX(-50%); top: calc(16px + env(safe-area-inset-top)); z-index: 30;
+    background: #222; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 15px; max-width: calc(100% - 32px);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-row">
+    <h1 data-t="appTitle">Workers</h1>
+    <button class="head-btn" id="langBtn" aria-label="Change language">नेपाली</button>
+    <button class="head-btn" id="menuBtn" data-t="backup">Backup</button>
+  </div>
+  <input class="search" id="search" type="search" autocomplete="off" data-tp="searchPh" placeholder="Search by name">
+  <div class="filters">
+    <select id="fJob" aria-label="Job type"></select>
+    <select id="fCountry" aria-label="Nationality"></select>
+    <select id="fStatus" aria-label="Status"></select>
+  </div>
+</header>
+
+<main>
+  <div class="notice" id="backupNotice" hidden>
+    <span id="backupNoticeText"></span>
+    <button class="link-btn" id="backupNoticeBtn" data-t="saveBackupShort">Save backup</button>
+  </div>
+  <div class="summary" id="summary" hidden>
+    <span id="countText"></span>
+    <button class="link-btn" id="tickAllBtn" data-t="tickAllShown">Tick all shown</button>
+  </div>
+  <div class="list" id="list"></div>
+  <div class="empty" id="empty" hidden></div>
+</main>
+
+<button class="fab" id="addBtn" data-t="addWorker">+ Add worker</button>
+
+<div class="tickbar" id="tickbar" hidden>
+  <div class="tickbar-row">
+    <strong id="tickCount"></strong>
+    <button class="link-btn" id="untickBtn" data-t="untickAll">Untick all</button>
+  </div>
+  <button class="send-btn" id="sendBtn" disabled data-t="sendSoon">Send job message (coming next)</button>
+</div>
+
+<!-- Add / edit worker -->
+<section class="sheet" id="formSheet" hidden>
+  <div class="sheet-head">
+    <button class="head-btn" id="formBack" data-t="cancel">Cancel</button>
+    <h2 id="formTitle"></h2>
+  </div>
+  <form class="sheet-body" id="form" novalidate>
+    <div class="photo-pick">
+      <button type="button" class="photo-big" id="photoBtn"></button>
+      <div class="photo-actions">
+        <button type="button" class="link-btn" id="photoChange"></button>
+        <button type="button" class="link-btn" id="photoRemove" data-t="removePhoto" style="color:var(--danger)">Remove photo</button>
+      </div>
+      <input type="file" id="photoInput" accept="image/*" hidden>
+    </div>
+
+    <div class="quick" id="quick" hidden>
+      <a id="callLink" data-t="call">Call</a>
+      <a id="waLink" class="wa" target="_blank" rel="noopener">WhatsApp</a>
+    </div>
+
+    <label class="field"><span data-t="name">Name</span>
+      <input id="fName" autocomplete="off">
+      <div class="error" id="nameErr" hidden data-t="nameRequired">Please type a name.</div>
+    </label>
+
+    <label class="field"><span data-t="phone">Phone</span>
+      <input id="fPhone" type="tel" inputmode="tel" autocomplete="off" placeholder="+971 50 123 4567">
+      <div class="hint" data-t="phoneHint">Include the country code, e.g. +971 or +977.</div>
+    </label>
+
+    <label class="field"><span data-t="email">Email (optional)</span>
+      <input id="fEmail" type="email" inputmode="email" autocomplete="off">
+    </label>
+
+    <label class="field"><span data-t="jobType">Job type</span>
+      <select id="fJobType"></select>
+      <input class="other-input" id="fJobOther" hidden data-tp="typeJob" placeholder="Type the job">
+    </label>
+
+    <label class="field"><span data-t="country">Nationality</span>
+      <select id="fCountrySel"></select>
+      <input class="other-input" id="fCountryOther" hidden data-tp="typeCountry" placeholder="Type the nationality">
+    </label>
+
+    <label class="field"><span data-t="visa">Visa status</span>
+      <select id="fVisa"></select>
+    </label>
+
+    <div class="field">
+      <span data-t="status">Status</span>
+      <div class="seg" id="fStatusSeg">
+        <button type="button" data-v="available" data-t="available">Available</button>
+        <button type="button" data-v="placed" data-t="placed">Placed</button>
+      </div>
+    </div>
+
+    <label class="check-row">
+      <input type="checkbox" id="fConsent">
+      <span>
+        <strong data-t="consent">Worker agreed to share phone/email with clients</strong>
+        <div class="hint" data-t="consentHint">Only then will the contact details be shown to clients (part 3).</div>
+      </span>
+    </label>
+
+    <label class="field"><span data-t="notes">Notes</span>
+      <textarea id="fNotes"></textarea>
+    </label>
+
+    <button type="submit" class="primary-btn" data-t="save">Save</button>
+    <button type="button" class="danger-btn" id="deleteBtn" data-t="deleteWorker" hidden>Delete this worker</button>
+  </form>
+</section>
+
+<!-- Backup menu -->
+<section class="sheet" id="menuSheet" hidden>
+  <div class="sheet-head">
+    <button class="head-btn" id="menuBack" data-t="close">Close</button>
+    <h2 data-t="backup">Backup</h2>
+  </div>
+  <div class="sheet-body">
+    <div class="menu-card">
+      <h3 data-t="saveBackup">Save a backup</h3>
+      <p data-t="backupExplain">Your workers are saved only on this phone. Save a backup file regularly and keep it somewhere safe, such as Google Drive or WhatsApp "Message yourself".</p>
+      <p id="lastBackup"></p>
+      <button class="primary-btn" id="exportBtn" data-t="saveBackupFile">Save backup file</button>
+    </div>
+    <div class="menu-card">
+      <h3 data-t="restore">Restore from backup</h3>
+      <p data-t="restoreExplain">Choose a backup file. Workers in the file are added, or updated if already here. Nothing is deleted.</p>
+      <button class="ghost-btn" id="importBtn" data-t="chooseFile">Choose backup file</button>
+      <input type="file" id="importInput" accept=".json,application/json" hidden>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ---------- Text in both languages ---------- */
+const T = {
+  en: {
+    appTitle: 'Workers', backup: 'Backup', searchPh: 'Search by name',
+    allJobs: 'All jobs', allCountries: 'Nationality', allStatus: 'All status',
+    available: 'Available', placed: 'Placed',
+    addWorker: '+ Add worker', editWorker: 'Edit worker', newWorker: 'New worker',
+    tickAllShown: 'Tick all shown', untickAll: 'Untick all',
+    nTicked: n => `${n} ticked`, nWorkers: (shown, total) => shown === total ? `${total} worker${total === 1 ? '' : 's'}` : `${shown} of ${total} workers`,
+    sendSoon: 'Send job message (coming next)',
+    noWorkers: 'No workers yet.', noMatch: 'No workers match your search.', clearFilters: 'Clear search and filters',
+    cancel: 'Cancel', close: 'Close', save: 'Save', deleteWorker: 'Delete this worker',
+    confirmDelete: name => `Delete ${name}? This cannot be undone.`,
+    addPhoto: 'Add photo', changePhoto: 'Change photo', removePhoto: 'Remove photo', tapAddPhoto: 'Tap to add photo',
+    call: 'Call',
+    name: 'Name', nameRequired: 'Please type a name.', phone: 'Phone', phoneHint: 'Include the country code, e.g. +971 or +977.',
+    email: 'Email (optional)', jobType: 'Job type', country: 'Nationality', visa: 'Visa status', status: 'Status', notes: 'Notes',
+    typeJob: 'Type the job', typeCountry: 'Type the nationality', other: 'Other…', notSet: '—',
+    consent: 'Worker agreed to share phone/email with clients',
+    consentHint: 'Only then will the contact details be shown to clients (part 3).',
+    saved: 'Saved', deleted: 'Deleted',
+    saveBackup: 'Save a backup', saveBackupShort: 'Save backup', saveBackupFile: 'Save backup file',
+    backupExplain: 'Your workers are saved only on this phone. Save a backup file regularly and keep it somewhere safe, such as Google Drive or WhatsApp "Message yourself".',
+    lastBackup: d => `Last backup: ${d}`, neverBackedUp: 'No backup saved yet.',
+    backupNudge: n => n == null ? 'You have not saved a backup yet.' : `Last backup was ${n} days ago.`,
+    restore: 'Restore from backup', chooseFile: 'Choose backup file',
+    restoreExplain: 'Choose a backup file. Workers in the file are added, or updated if already here. Nothing is deleted.',
+    confirmRestore: n => `Add or update ${n} workers from this backup?`, restored: n => `Restored ${n} workers`,
+    badFile: 'This is not a valid backup file.', backupSaved: 'Backup file ready',
+    photoFail: 'Could not read that photo.',
+    job: { maid: 'Maid', nail: 'Nail technician', driver: 'Driver', office: 'Office staff' },
+    countryName: { AE: 'UAE (Dubai)', NP: 'Nepal' },
+    visaName: { none: 'No visa', visit: 'Visit visa', employment: 'Employment visa', process: 'Visa in process', expired: 'Visa expired', notneeded: 'Not needed' },
+  },
+  ne: {
+    appTitle: 'कामदारहरू', backup: 'ब्याकअप', searchPh: 'नामबाट खोज्नुहोस्',
+    allJobs: 'सबै काम', allCountries: 'राष्ट्रियता', allStatus: 'सबै स्थिति',
+    available: 'उपलब्ध', placed: 'काममा लगाइएको',
+    addWorker: '+ कामदार थप्नुहोस्', editWorker: 'कामदार सम्पादन', newWorker: 'नयाँ कामदार',
+    tickAllShown: 'देखिएका सबै छान्नुहोस्', untickAll: 'सबै हटाउनुहोस्',
+    nTicked: n => `${n} जना छानिए`, nWorkers: (shown, total) => shown === total ? `${total} जना कामदार` : `${total} मध्ये ${shown} जना`,
+    sendSoon: 'कामको सन्देश पठाउनुहोस् (चाँडै आउँदैछ)',
+    noWorkers: 'अहिलेसम्म कुनै कामदार छैन।', noMatch: 'खोजसँग मिल्ने कामदार भेटिएन।', clearFilters: 'खोज र फिल्टर हटाउनुहोस्',
+    cancel: 'रद्द गर्नुहोस्', close: 'बन्द गर्नुहोस्', save: 'सेभ गर्नुहोस्', deleteWorker: 'यो कामदार मेटाउनुहोस्',
+    confirmDelete: name => `${name} लाई मेटाउने हो? यो फिर्ता गर्न सकिँदैन।`,
+    addPhoto: 'फोटो थप्नुहोस्', changePhoto: 'फोटो बदल्नुहोस्', removePhoto: 'फोटो हटाउनुहोस्', tapAddPhoto: 'फोटो थप्न थिच्नुहोस्',
+    call: 'फोन गर्नुहोस्',
+    name: 'नाम', nameRequired: 'कृपया नाम लेख्नुहोस्।', phone: 'फोन', phoneHint: 'देशको कोड सहित लेख्नुहोस्, जस्तै +971 वा +977।',
+    email: 'इमेल (चाहिए मात्र)', jobType: 'कामको प्रकार', country: 'राष्ट्रियता', visa: 'भिसाको स्थिति', status: 'स्थिति', notes: 'टिप्पणी',
+    typeJob: 'काम लेख्नुहोस्', typeCountry: 'राष्ट्रियता लेख्नुहोस्', other: 'अन्य…', notSet: '—',
+    consent: 'ग्राहकसँग फोन/इमेल बाँड्न कामदार सहमत छन्',
+    consentHint: 'सहमति भए मात्र ग्राहकलाई सम्पर्क विवरण देखाइन्छ (भाग ३)।',
+    saved: 'सेभ भयो', deleted: 'मेटाइयो',
+    saveBackup: 'ब्याकअप सेभ गर्नुहोस्', saveBackupShort: 'ब्याकअप सेभ', saveBackupFile: 'ब्याकअप फाइल सेभ गर्नुहोस्',
+    backupExplain: 'कामदारहरूको विवरण यो फोनमा मात्र राखिएको छ। नियमित रूपमा ब्याकअप फाइल सेभ गरी Google Drive वा WhatsApp "आफैँलाई सन्देश" जस्तो सुरक्षित ठाउँमा राख्नुहोस्।',
+    lastBackup: d => `अन्तिम ब्याकअप: ${d}`, neverBackedUp: 'अहिलेसम्म ब्याकअप सेभ गरिएको छैन।',
+    backupNudge: n => n == null ? 'तपाईंले अहिलेसम्म ब्याकअप सेभ गर्नुभएको छैन।' : `अन्तिम ब्याकअप ${n} दिन अघि भएको थियो।`,
+    restore: 'ब्याकअपबाट फिर्ता ल्याउनुहोस्', chooseFile: 'ब्याकअप फाइल छान्नुहोस्',
+    restoreExplain: 'ब्याकअप फाइल छान्नुहोस्। फाइलका कामदारहरू थपिन्छन्, पहिले नै भए अद्यावधिक हुन्छन्। केही पनि मेटिँदैन।',
+    confirmRestore: n => `यो ब्याकअपबाट ${n} जना कामदार थप्ने वा अद्यावधिक गर्ने हो?`, restored: n => `${n} जना कामदार फिर्ता ल्याइयो`,
+    badFile: 'यो सही ब्याकअप फाइल होइन।', backupSaved: 'ब्याकअप फाइल तयार भयो',
+    photoFail: 'त्यो फोटो खोल्न सकिएन।',
+    job: { maid: 'घरेलु कामदार', nail: 'नेल टेक्निसियन', driver: 'ड्राइभर', office: 'अफिस कर्मचारी' },
+    countryName: { AE: 'युएई (दुबई)', NP: 'नेपाल' },
+    visaName: { none: 'भिसा छैन', visit: 'भिजिट भिसा', employment: 'रोजगार भिसा', process: 'भिसा प्रक्रियामा', expired: 'भिसा सकिएको', notneeded: 'आवश्यक छैन' },
+  },
+};
+const JOB_KEYS = ['maid', 'nail', 'driver', 'office'];
+const COUNTRY_KEYS = ['AE', 'NP'];
+const VISA_KEYS = ['none', 'visit', 'employment', 'process', 'expired', 'notneeded'];
+const OTHER = '__other__';
+
+/* ---------- Small helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+let lang = store.get('lang') === 'ne' ? 'ne' : 'en';
+const t = (k, ...a) => { const v = T[lang][k] ?? T.en[k]; return typeof v === 'function' ? v(...a) : v; };
+const jobLabel = v => T[lang].job[v] || v || t('notSet');
+const countryLabel = v => T[lang].countryName[v] || v || t('notSet');
+const visaLabel = v => T[lang].visaName[v] || '';
+const initials = name => name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+let toastTimer;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg; el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2200);
+}
+
+/* ---------- Storage on this phone (IndexedDB) ---------- */
+const db = {
+  _p: null,
+  open() {
+    return this._p ||= new Promise((res, rej) => {
+      const r = indexedDB.open('staffing-app', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('workers', { keyPath: 'id' });
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async run(mode, fn) {
+    const d = await this.open();
+    return new Promise((res, rej) => {
+      const tx = d.transaction('workers', mode);
+      const req = fn(tx.objectStore('workers'));
+      tx.oncomplete = () => res(req && req.result);
+      tx.onerror = () => rej(tx.error);
+    });
+  },
+  all() { return this.run('readonly', s => s.getAll()); },
+  put(w) { return this.run('readwrite', s => s.put(w)); },
+  del(id) { return this.run('readwrite', s => s.delete(id)); },
+  putMany(list) { return this.run('readwrite', s => { list.forEach(w => s.put(w)); }); },
+};
+
+/* ---------- App state ---------- */
+let workers = [];
+const ticked = new Set();
+const filters = { q: '', job: '', country: '', status: '' };
+
+async function load() {
+  workers = await db.all();
+  render();
+}
+
+function visibleWorkers() {
+  const q = filters.q.trim().toLowerCase();
+  return workers
+    .filter(w => !q || w.name.toLowerCase().includes(q))
+    .filter(w => !filters.job || w.jobType === filters.job)
+    .filter(w => !filters.country || w.country === filters.country)
+    .filter(w => !filters.status || w.status === filters.status)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/* ---------- Rendering ---------- */
+function applyStaticText() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll('[data-tp]').forEach(el => { el.placeholder = t(el.dataset.tp); });
+  $('langBtn').textContent = lang === 'en' ? 'नेपाली' : 'English';
+  document.title = t('appTitle');
+}
+
+function fillSelect(sel, firstLabel, options, current) {
+  sel.innerHTML = `<option value="">${esc(firstLabel)}</option>` +
+    options.map(([v, label]) => `<option value="${esc(v)}">${esc(label)}</option>`).join('');
+  sel.value = options.some(([v]) => v === current) ? current : '';
+  sel.classList.toggle('on', !!sel.value);
+  return sel.value;
+}
+
+function renderFilters() {
+  const customJobs = [...new Set(workers.map(w => w.jobType).filter(v => v && !JOB_KEYS.includes(v)))].sort();
+  const customCountries = [...new Set(workers.map(w => w.country).filter(v => v && !COUNTRY_KEYS.includes(v)))].sort();
+  filters.job = fillSelect($('fJob'), t('allJobs'), [...JOB_KEYS, ...customJobs].map(v => [v, jobLabel(v)]), filters.job);
+  filters.country = fillSelect($('fCountry'), t('allCountries'), [...COUNTRY_KEYS, ...customCountries].map(v => [v, countryLabel(v)]), filters.country);
+  filters.status = fillSelect($('fStatus'), t('allStatus'), [['available', t('available')], ['placed', t('placed')]], filters.status);
+}
+
+function render() {
+  applyStaticText();
+  renderFilters();
+
+  // Forget ticks for workers that no longer exist
+  for (const id of ticked) if (!workers.some(w => w.id === id)) ticked.delete(id);
+
+  const shown = visibleWorkers();
+  $('list').innerHTML = shown.map(w => {
+    const on = ticked.has(w.id);
+    const photo = w.photo
+      ? `<img class="avatar" src="${w.photo}" alt="">`
+      : `<span class="avatar">${esc(initials(w.name))}</span>`;
+    const metaParts = [jobLabel(w.jobType), countryLabel(w.country)];
+    const visa = visaLabel(w.visa);
+    if (visa) metaParts.push(visa);
+    return `<div class="card${on ? ' ticked' : ''}" data-id="${esc(w.id)}">
+      <button class="tick" data-act="tick" role="checkbox" aria-checked="${on}" aria-label="${esc(w.name)}"><span>${on ? '✓' : ''}</span></button>
+      <button class="card-main" data-act="open">
+        ${photo}
+        <span class="info">
+          <div class="name">${esc(w.name)}</div>
+          <div class="meta">${esc(metaParts.join(' · '))}</div>
+          <span class="badge${w.status === 'placed' ? ' placed' : ''}">${esc(t(w.status === 'placed' ? 'placed' : 'available'))}</span>
+        </span>
+      </button>
+    </div>`;
+  }).join('');
+
+  const empty = $('empty');
+  if (!workers.length) {
+    empty.hidden = false;
+    empty.innerHTML = `<p>${esc(t('noWorkers'))}</p>`;
+  } else if (!shown.length) {
+    empty.hidden = false;
+    empty.innerHTML = `<p>${esc(t('noMatch'))}</p><button class="ghost-btn" id="clearFiltersBtn">${esc(t('clearFilters'))}</button>`;
+    $('clearFiltersBtn').onclick = () => {
+      Object.assign(filters, { q: '', job: '', country: '', status: '' });
+      $('search').value = '';
+      render();
+    };
+  } else {
+    empty.hidden = true;
+  }
+
+  $('summary').hidden = !shown.length;
+  $('countText').textContent = t('nWorkers', shown.length, workers.length);
+
+  const n = ticked.size;
+  $('tickbar').hidden = n === 0;
+  document.body.classList.toggle('has-ticks', n > 0);
+  $('tickCount').textContent = t('nTicked', n);
+
+  renderBackupNotice();
+}
+
+function daysSinceBackup() {
+  const last = Number(store.get('lastBackup'));
+  return last ? Math.floor((Date.now() - last) / 86400000) : null;
+}
+function renderBackupNotice() {
+  const days = daysSinceBackup();
+  const show = workers.length >= 3 && (days == null || days >= 14);
+  $('backupNotice').hidden = !show;
+  if (show) $('backupNoticeText').textContent = t('backupNudge', days);
+}
+
+/* ---------- List interactions ---------- */
+$('list').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const id = btn.closest('.card').dataset.id;
+  if (btn.dataset.act === 'tick') {
+    ticked.has(id) ? ticked.delete(id) : ticked.add(id);
+    render();
+  } else {
+    openForm(workers.find(w => w.id === id));
+  }
+});
+$('search').addEventListener('input', e => { filters.q = e.target.value; render(); });
+$('fJob').addEventListener('change', e => { filters.job = e.target.value; render(); });
+$('fCountry').addEventListener('change', e => { filters.country = e.target.value; render(); });
+$('fStatus').addEventListener('change', e => { filters.status = e.target.value; render(); });
+$('tickAllBtn').onclick = () => { visibleWorkers().forEach(w => ticked.add(w.id)); render(); };
+$('untickBtn').onclick = () => { ticked.clear(); render(); };
+$('langBtn').onclick = () => { lang = lang === 'en' ? 'ne' : 'en'; store.set('lang', lang); render(); if (!$('formSheet').hidden) refreshFormText(); renderLastBackup(); };
+$('addBtn').onclick = () => openForm(null);
+
+/* ---------- Sheets + phone back button ---------- */
+function openSheet(id) {
+  $(id).hidden = false;
+  $(id).scrollTop = 0;
+  history.pushState({ sheet: id }, '');
+}
+function closeSheet() {
+  if (history.state && history.state.sheet) history.back();
+  else hideSheets();
+}
+function hideSheets() { $('formSheet').hidden = true; $('menuSheet').hidden = true; }
+window.addEventListener('popstate', hideSheets);
+
+/* ---------- Add / edit form ---------- */
+let editing = null;   // worker being edited, or null for new
+let formPhoto = null; // data URL
+let formStatus = 'available';
+
+function setupChoice(sel, otherInput, keys, labelFn, value) {
+  sel.innerHTML = `<option value="">${esc(t('notSet'))}</option>` +
+    keys.map(k => `<option value="${k}">${esc(labelFn(k))}</option>`).join('') +
+    `<option value="${OTHER}">${esc(t('other'))}</option>`;
+  if (!value) { sel.value = ''; otherInput.value = ''; }
+  else if (keys.includes(value)) { sel.value = value; otherInput.value = ''; }
+  else { sel.value = OTHER; otherInput.value = value; }
+  otherInput.hidden = sel.value !== OTHER;
+}
+function readChoice(sel, otherInput) {
+  return sel.value === OTHER ? otherInput.value.trim() : sel.value;
+}
+[['fJobType', 'fJobOther'], ['fCountrySel', 'fCountryOther']].forEach(([s, o]) => {
+  $(s).onchange = () => { $(o).hidden = $(s).value !== OTHER; if (!$(o).hidden) $(o).focus(); };
+});
+function fillChoices(job, country, visa) {
+  setupChoice($('fJobType'), $('fJobOther'), JOB_KEYS, jobLabel, job);
+  setupChoice($('fCountrySel'), $('fCountryOther'), COUNTRY_KEYS, countryLabel, country);
+  $('fVisa').innerHTML = `<option value="">${esc(t('notSet'))}</option>` +
+    VISA_KEYS.map(k => `<option value="${k}">${esc(visaLabel(k))}</option>`).join('');
+  $('fVisa').value = visa || '';
+}
+
+function renderPhoto() {
+  const b = $('photoBtn');
+  b.innerHTML = formPhoto ? `<img class="photo-big" src="${formPhoto}" alt="">` : esc(t('tapAddPhoto'));
+  b.style.padding = formPhoto ? '0' : '';
+  $('photoChange').textContent = t(formPhoto ? 'changePhoto' : 'addPhoto');
+  $('photoRemove').hidden = !formPhoto;
+}
+function renderStatusSeg() {
+  $('fStatusSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === formStatus));
+}
+function renderQuickLinks() {
+  const raw = $('fPhone').value.trim();
+  const digits = raw.replace(/\D/g, '');
+  $('quick').hidden = digits.length < 6;
+  $('callLink').href = 'tel:' + raw.replace(/[^\d+]/g, '');
+  $('waLink').href = 'https://wa.me/' + digits;
+}
+function refreshFormText() {
+  applyStaticText();
+  $('formTitle').textContent = t(editing ? 'editWorker' : 'newWorker');
+  fillChoices(readChoice($('fJobType'), $('fJobOther')), readChoice($('fCountrySel'), $('fCountryOther')), $('fVisa').value);
+  renderPhoto();
+}
+
+function openForm(w) {
+  editing = w || null;
+  formPhoto = w?.photo || null;
+  formStatus = w?.status || 'available';
+  $('fName').value = w?.name || '';
+  $('fPhone').value = w?.phone || '';
+  $('fEmail').value = w?.email || '';
+  $('fNotes').value = w?.notes || '';
+  $('fConsent').checked = !!w?.consentShareContact;
+  $('nameErr').hidden = true;
+  $('formTitle').textContent = t(w ? 'editWorker' : 'newWorker');
+  fillChoices(w?.jobType, w?.country, w?.visa);
+  $('deleteBtn').hidden = !w;
+  renderPhoto(); renderStatusSeg(); renderQuickLinks();
+  openSheet('formSheet');
+}
+
+$('fPhone').addEventListener('input', renderQuickLinks);
+$('fStatusSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  formStatus = b.dataset.v; renderStatusSeg();
+});
+$('formBack').onclick = closeSheet;
+$('photoBtn').onclick = $('photoChange').onclick = () => $('photoInput').click();
+$('photoRemove').onclick = () => { formPhoto = null; renderPhoto(); };
+$('photoInput').onchange = async e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try { formPhoto = await shrinkPhoto(file); renderPhoto(); }
+  catch { toast(t('photoFail')); }
+};
+
+// Make photos small so hundreds of workers fit on the phone.
+function shrinkPhoto(file, max = 480) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(); };
+    img.src = url;
+  });
+}
+
+$('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = $('fName').value.trim();
+  if (!name) { $('nameErr').hidden = false; $('fName').focus(); return; }
+  const now = Date.now();
+  const w = {
+    ...(editing || {}),
+    id: editing?.id || newId(),
+    name,
+    phone: $('fPhone').value.trim(),
+    email: $('fEmail').value.trim(),
+    jobType: readChoice($('fJobType'), $('fJobOther')),
+    country: readChoice($('fCountrySel'), $('fCountryOther')),
+    visa: $('fVisa').value,
+    status: formStatus,
+    consentShareContact: $('fConsent').checked,
+    notes: $('fNotes').value.trim(),
+    photo: formPhoto,
+    createdAt: editing?.createdAt || now,
+    updatedAt: now,
+  };
+  await db.put(w);
+  askPersistentStorage();
+  await load();
+  closeSheet();
+  toast(t('saved'));
+});
+
+$('deleteBtn').onclick = async () => {
+  if (!editing || !confirm(t('confirmDelete', editing.name))) return;
+  await db.del(editing.id);
+  ticked.delete(editing.id);
+  await load();
+  closeSheet();
+  toast(t('deleted'));
+};
+
+// Ask the browser not to clear our data when the phone is low on space.
+let persistAsked = false;
+function askPersistentStorage() {
+  if (persistAsked || !navigator.storage?.persist) return;
+  persistAsked = true;
+  navigator.storage.persist().catch(() => {});
+}
+
+/* ---------- Backup ---------- */
+function renderLastBackup() {
+  const last = Number(store.get('lastBackup'));
+  $('lastBackup').textContent = last
+    ? t('lastBackup', new Date(last).toLocaleDateString(lang === 'ne' ? 'ne-NP' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' }))
+    : t('neverBackedUp');
+}
+$('menuBtn').onclick = () => { renderLastBackup(); openSheet('menuSheet'); };
+$('menuBack').onclick = closeSheet;
+$('backupNoticeBtn').onclick = exportBackup;
+$('exportBtn').onclick = exportBackup;
+
+async function exportBackup() {
+  const data = { app: 'staffing-workers', version: 1, exportedAt: new Date().toISOString(), workers: await db.all() };
+  const name = `workers-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const file = new File([JSON.stringify(data)], name, { type: 'application/json' });
+  let done = false;
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); done = true; }
+    catch (err) { if (err.name === 'AbortError') return; }
+  }
+  if (!done) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  store.set('lastBackup', String(Date.now()));
+  renderLastBackup(); renderBackupNotice();
+  toast(t('backupSaved'));
+}
+
+$('importBtn').onclick = () => $('importInput').click();
+$('importInput').onchange = async e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  let list;
+  try {
+    const data = JSON.parse(await file.text());
+    list = (data && data.app === 'staffing-workers' && Array.isArray(data.workers)) ? data.workers : null;
+    list = list && list.filter(w => w && typeof w.id === 'string' && typeof w.name === 'string');
+  } catch { list = null; }
+  if (!list || !list.length) { alert(t('badFile')); return; }
+  if (!confirm(t('confirmRestore', list.length))) return;
+  await db.putMany(list);
+  await load();
+  closeSheet();
+  toast(t('restored', list.length));
+};
+
+/* ---------- Start ---------- */
+load();
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
